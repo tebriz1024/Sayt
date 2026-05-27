@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sayt Yığılması | Peşəkar Veb Həllər</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ===== FİREBASE KONFİQURASİYASI =====
+  // Bu məlumatları Firebase Console-dan alın və buraya yapışdırın
+  const firebaseConfig = {
+    apiKey: "SIZIN_API_KEY",
+    authDomain: "SIZIN_PROJECT.firebaseapp.com",
+    projectId: "SIZIN_PROJECT_ID",
+    storageBucket: "SIZIN_PROJECT.appspot.com",
+    messagingSenderId: "SIZIN_SENDER_ID",
+    appId: "SIZIN_APP_ID"
+  };
+  // ==========================================
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window.loadProjects = async function() {
+    try {
+      const q = query(collection(db, "projects"), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      const projects = [];
+      snapshot.forEach(doc => projects.push({ id: doc.id, ...doc.data() }));
+      renderProjects(projects);
+    } catch (e) {
+      console.error("Firebase xətası:", e);
+      document.getElementById('projects-grid').innerHTML = '<p style="color:#888;text-align:center;grid-column:1/-1">Layihələr yüklənərkən xəta baş verdi.</p>';
+    }
+  };
+
+  function renderProjects(projects) {
+    const grid = document.getElementById('projects-grid');
+    if (!projects.length) {
+      grid.innerHTML = '<p style="color:#888;text-align:center;grid-column:1/-1">Hələ layihə yoxdur.</p>';
+      return;
+    }
+    grid.innerHTML = projects.map(p => `
+      <div class="project-card" onclick="openProject('${p.siteUrl || '#'}')">
+        <div class="project-img" style="background-image:url('${p.imageUrl || ''}')">
+          ${p.imageUrl ? '' : `<div class="img-placeholder"><i class="fas fa-globe"></i></div>`}
+          <div class="project-overlay">
+            <span>Sayta Bax <i class="fas fa-arrow-right"></i></span>
+          </div>
+        </div>
+        <div class="project-info">
+          <div class="project-tags">
+            ${(p.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
+          </div>
+          <h3>${p.title || 'Layihə'}</h3>
+          <p>${p.description || ''}</p>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  window.openProject = function(url) {
+    if (url && url !== '#') window.open(url, '_blank');
+  };
+
+  window.addEventListener('DOMContentLoaded', () => {
+    window.loadProjects();
+  });
+</script>
+
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --border: rgba(255,255,255,0.07);
+  --accent: #4f7fff;
+  --accent2: #7c3aed;
+  --text: #f0f0f5;
+  --muted: #6b7280;
+  --card: #13131c;
+  --gradient: linear-gradient(135deg, #4f7fff, #7c3aed);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  overflow-x: hidden;
+}
+
+/* ── NAVBAR ── */
+nav {
+  position: fixed; top: 0; width: 100%; z-index: 100;
+  padding: 18px 6%;
+  display: flex; justify-content: space-between; align-items: center;
+  background: rgba(10,10,15,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  transition: 0.3s;
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800; font-size: 1.4rem;
+  background: var(--gradient);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  text-decoration: none;
+}
+
+.nav-links {
+  display: flex; gap: 32px; list-style: none;
+}
+.nav-links a {
+  color: var(--muted); text-decoration: none;
+  font-size: 0.9rem; font-weight: 500;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--text); }
+
+.nav-cta {
+  background: var(--gradient);
+  color: #fff; border: none; padding: 10px 22px;
+  border-radius: 8px; font-weight: 600; font-size: 0.9rem;
+  cursor: pointer; text-decoration: none;
+  transition: opacity 0.2s, transform 0.2s;
+  display: flex; align-items: center; gap: 8px;
+}
+.nav-cta:hover { opacity: 0.88; transform: translateY(-1px); }
+
+.hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; }
+.hamburger span { width: 24px; height: 2px; background: var(--text); border-radius: 2px; transition: 0.3s; }
+
+/* ── HERO ── */
+#hero {
+  min-height: 100vh;
+  display: flex; align-items: center;
+  padding: 120px 6% 80px;
+  position: relative; overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background: radial-gradient(ellipse at 20% 50%, rgba(79,127,255,0.12) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 20%, rgba(124,58,237,0.1) 0%, transparent 60%);
+}
+
+.hero-grid {
+  position: absolute; inset: 0; z-index: 0;
+  background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+}
+
+.hero-content { position: relative; z-index: 1; max-width: 720px; }
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(79,127,255,0.1);
+  border: 1px solid rgba(79,127,255,0.3);
+  border-radius: 100px; padding: 6px 16px;
+  font-size: 0.8rem; font-weight: 500; color: #89a8ff;
+  margin-bottom: 28px;
+}
+.hero-badge .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #4f7fff;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.hero-content h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2.8rem, 6vw, 5rem);
+  font-weight: 800; line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin-bottom: 24px;
+}
+
+.hero-content h1 span {
+  background: var(--gradient);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+.hero-content p {
+  font-size: 1.15rem; color: var(--muted);
+  line-height: 1.7; max-width: 520px;
+  margin-bottom: 40px;
+}
+
+.hero-btns { display: flex; gap: 14px; flex-wrap: wrap; }
+
+.btn-primary {
+  background: var(--gradient);
+  color: #fff; border: none; padding: 14px 28px;
+  border-radius: 10px; font-weight: 600; font-size: 1rem;
+  cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: transform 0.2s, opacity 0.2s;
+}
+.btn-primary:hover { transform: translateY(-2px); opacity: 0.9; }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text); border: 1px solid var(--border);
+  padding: 14px 28px; border-radius: 10px;
+  font-weight: 500; font-size: 1rem;
+  cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.btn-secondary:hover { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.03); }
+
+/* ── STATS ── */
+#stats {
+  padding: 60px 6%;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-around; flex-wrap: wrap; gap: 32px;
+  background: var(--surface);
+}
+
+.stat {
+  text-align: center;
+}
+.stat-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 2.8rem; font-weight: 800;
+  background: var(--gradient);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.stat-label { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+
+/* ── SECTION STYLES ── */
+section { padding: 100px 6%; }
+
+.section-label {
+  font-size: 0.8rem; font-weight: 600;
+  color: #4f7fff; letter-spacing: 2px;
+  text-transform: uppercase; margin-bottom: 12px;
+}
+
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800; line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+
+.section-sub {
+  color: var(--muted); font-size: 1.05rem;
+  max-width: 520px; line-height: 1.7;
+}
+
+/* ── SERVICES ── */
+#services { background: var(--surface); }
+
+.services-header { margin-bottom: 60px; }
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.service-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px; padding: 32px;
+  transition: border-color 0.3s, transform 0.3s;
+  cursor: default;
+}
+.service-card:hover {
+  border-color: rgba(79,127,255,0.4);
+  transform: translateY(-4px);
+}
+
+.service-icon {
+  width: 52px; height: 52px; border-radius: 12px;
+  background: rgba(79,127,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; color: #4f7fff;
+  margin-bottom: 20px;
+}
+
+.service-card h3 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700; font-size: 1.15rem;
+  margin-bottom: 10px;
+}
+.service-card p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+
+/* ── PROJECTS ── */
+#projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px; margin-top: 60px;
+}
+
+.project-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px; overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.3s, transform 0.3s;
+}
+.project-card:hover { border-color: rgba(79,127,255,0.4); transform: translateY(-4px); }
+
+.project-img {
+  height: 200px; position: relative;
+  background: #1a1a25; background-size: cover; background-position: center;
+  overflow: hidden;
+}
+.img-placeholder {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem; color: rgba(255,255,255,0.1);
+}
+.project-overlay {
+  position: absolute; inset: 0;
+  background: rgba(79,127,255,0.8);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.3s;
+  color: #fff; font-weight: 600; font-size: 1rem;
+}
+.project-card:hover .project-overlay { opacity: 1; }
+
+.project-info { padding: 22px; }
+.project-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.tag {
+  background: rgba(79,127,255,0.1);
+  color: #89a8ff; border-radius: 100px;
+  padding: 3px 10px; font-size: 0.75rem; font-weight: 500;
+}
+.project-info h3 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700; font-size: 1.1rem; margin-bottom: 8px;
+}
+.project-info p { color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
+
+/* ── WHY US ── */
+#why { background: var(--surface); }
+
+.why-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 20px; margin-top: 60px;
+}
+
+.why-item {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 28px;
+  display: flex; gap: 20px; align-items: flex-start;
+  transition: border-color 0.3s;
+}
+.why-item:hover { border-color: rgba(79,127,255,0.3); }
+
+.why-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 2.5rem; font-weight: 800;
+  background: var(--gradient);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  line-height: 1; flex-shrink: 0;
+}
+.why-text h4 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700; margin-bottom: 8px;
+}
+.why-text p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+
+/* ── CTA SECTION ── */
+#cta {
+  text-align: center;
+  background: linear-gradient(135deg, rgba(79,127,255,0.08), rgba(124,58,237,0.08));
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+#cta .section-title { margin: 0 auto 16px; }
+#cta .section-sub { margin: 0 auto 40px; text-align: center; }
+#cta .hero-btns { justify-content: center; }
+
+/* ── CLIENTS ── */
+#clients { padding: 80px 6%; }
+.clients-title { text-align: center; color: var(--muted); font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 40px; }
+.clients-row {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 16px;
+}
+.client-logo {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 28px;
+  font-weight: 600; color: var(--muted); font-size: 0.9rem;
+  transition: border-color 0.3s, color 0.3s;
+}
+.client-logo:hover { border-color: rgba(79,127,255,0.4); color: var(--text); }
+
+/* ── FOOTER ── */
+footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 60px 6% 32px;
+}
+.footer-top {
+  display: flex; justify-content: space-between;
+  align-items: flex-start; flex-wrap: wrap; gap: 40px;
+  margin-bottom: 48px;
+}
+.footer-brand .logo { font-size: 1.5rem; }
+.footer-brand p {
+  color: var(--muted); font-size: 0.9rem;
+  margin-top: 12px; max-width: 220px; line-height: 1.6;
+}
+.footer-links h4 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700; font-size: 0.85rem;
+  letter-spacing: 1px; text-transform: uppercase;
+  margin-bottom: 16px; color: var(--text);
+}
+.footer-links ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.footer-links a {
+  color: var(--muted); text-decoration: none; font-size: 0.9rem;
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--text); }
+.social-row { display: flex; gap: 12px; margin-top: 20px; }
+.social-btn {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--card); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); text-decoration: none; font-size: 1rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+.social-btn:hover { border-color: rgba(79,127,255,0.4); color: #4f7fff; }
+.footer-bottom {
+  border-top: 1px solid var(--border); padding-top: 24px;
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 12px;
+}
+.footer-bottom p { color: var(--muted); font-size: 0.85rem; }
+.footer-bottom a { color: var(--muted); text-decoration: none; font-size: 0.85rem; }
+.footer-bottom a:hover { color: var(--text); }
+
+/* ── MOBILE MENU ── */
+.mobile-menu {
+  display: none; position: fixed; inset: 0; z-index: 99;
+  background: rgba(10,10,15,0.97);
+  flex-direction: column; align-items: center; justify-content: center; gap: 32px;
+  backdrop-filter: blur(20px);
+}
+.mobile-menu.open { display: flex; }
+.mobile-menu a {
+  color: var(--text); text-decoration: none;
+  font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 700;
+  transition: color 0.2s;
+}
+.mobile-menu a:hover { color: #4f7fff; }
+.mobile-close {
+  position: absolute; top: 24px; right: 6%;
+  font-size: 1.5rem; cursor: pointer; color: var(--muted);
+  background: none; border: none;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .hamburger { display: flex; }
+  .why-grid { grid-template-columns: 1fr; }
+  #stats { flex-direction: column; align-items: center; gap: 24px; }
+  .footer-top { flex-direction: column; }
+}
+
+@media (max-width: 480px) {
+  .hero-btns { flex-direction: column; }
+  .btn-primary, .btn-secondary { justify-content: center; }
+}
+
+/* ── SCROLL REVEAL ── */
+.reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.7s, transform 0.7s; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- MOBILE MENU -->
+<div class="mobile-menu" id="mobileMenu">
+  <button class="mobile-close" onclick="closeMobileMenu()"><i class="fas fa-times"></i></button>
+  <a href="#hero" onclick="closeMobileMenu()">Ana Səhifə</a>
+  <a href="#services" onclick="closeMobileMenu()">Xidmətlər</a>
+  <a href="#projects" onclick="closeMobileMenu()">Layihələr</a>
+  <a href="#why" onclick="closeMobileMenu()">Niyə Biz</a>
+  <a href="https://wa.me/qr/7WGJXQHSUIMDE1" target="_blank" onclick="closeMobileMenu()">Sifariş Et</a>
+</div>
+
+<!-- NAVBAR -->
+<nav>
+  <a href="#hero" class="logo">Sayt Yığılması</a>
+  <ul class="nav-links">
+    <li><a href="#services">Xidmətlər</a></li>
+    <li><a href="#projects">Layihələr</a></li>
+    <li><a href="#why">Niyə Biz</a></li>
+    <li><a href="#clients">Müştərilər</a></li>
+  </ul>
+  <a href="https://wa.me/qr/7WGJXQHSUIMDE1" target="_blank" class="nav-cta">
+    <i class="fab fa-whatsapp"></i> Sifariş Et
+  </a>
+  <div class="hamburger" onclick="openMobileMenu()">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      Azərbaycanda #1 Veb Agentlik
+    </div>
+    <h1>
+      Biznesiniz üçün<br>
+      <span>Peşəkar Veb</span><br>
+      Həllər
+    </h1>
+    <p>
+      Müasir dizayn, sürətli performans və effektiv SEO ilə brendinizi rəqəmsal dünyada öndə saxlayırıq.
+      Veb sayt, mobil tətbiq, SEO — hər şey bir yerdə.
+    </p>
+    <div class="hero-btns">
+      <a href="https://wa.me/qr/7WGJXQHSUIMDE1" target="_blank" class="btn-primary">
+        <i class="fab fa-whatsapp"></i> İndi Sifariş Et
+      </a>
+      <a href="#projects" class="btn-secondary">
+        Layihələrimizə Bax <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div id="stats">
+  <div class="stat">
+    <div class="stat-num">25+</div>
+    <div class="stat-label">Tamamlanan Layihə</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">3+</div>
+    <div class="stat-label">İl Təcrübə</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">100%</div>
+    <div class="stat-label">Müştəri Məmnuniyyəti</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">24/7</div>
+    <div class="stat-label">Texniki Dəstək</div>
+  </div>
+</div>
+
+<!-- SERVICES -->
+<section id="services">
+  <div class="services-header reveal">
+    <div class="section-label">Xidmətlərimiz</div>
+    <h2 class="section-title">Bugün nə təklif edə bilərik</h2>
+    <p class="section-sub">Biznesinizin ehtiyaclarına uyğun peşəkar rəqəmsal həllər təqdim edirik.</p>
+  </div>
+  <div class="services-grid">
+    <div class="service-card reveal">
+      <div class="service-icon"><i class="fas fa-code"></i></div>
+      <h3>Veb İnkişaf</h3>
+      <p>Müasir texnologiyalarla sürətli, SEO-optimallaşdırılmış veb saytlar hazırlayırıq.</p>
+    </div>
+    <div class="service-card reveal">
+      <div class="service-icon"><i class="fas fa-mobile-alt"></i></div>
+      <h3>Mobil Tətbiqlər</h3>
+      <p>Android və iOS üçün yüksək keyfiyyətli, istifadəçi dostu mobil tətbiqlər.</p>
+    </div>
+    <div class="service-card reveal">
+      <div class="service-icon"><i class="fas fa-search"></i></div>
+      <h3>SEO Optimallaşdırma</h3>
+      <p>Axtarış motorlarında saytınızın görünürlüyünü artıraraq daha çox müştəri cəlb edirik.</p>
+    </div>
+    <div class="service-card reveal">
+      <div class="service-icon"><i class="fas fa-paint-brush"></i></div>
+      <h3>UI/UX Dizayn</h3>
+      <p>Estetik və funksional interfeyslər ilə istifadəçi təcrübəsini maksimuma çatdırırıq.</p>
+    </div>
+    <div class="service-card reveal">
+      <div class="service-icon"><i class="fas fa-shopping-cart"></i></div>
+      <h3>E-Ticarət Həlləri</h3>
+      <p>Onlayn mağaza, ödəniş sistemləri və sifarişidarəetmə sistemləri quruyuruq.</p>
+    </div>
+    <div class="service-card reveal">
+      <div class="service-icon"><i class="fas fa-headset"></i></div>
+      <h3>Texniki Dəstək</h3>
+      <p>Layihəniz bitdikdən sonra da yanınızdayıq — 24/7 texniki dəstək xidməti.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PROJECTS -->
+<section id="projects" style="background: var(--bg);">
+  <div class="reveal">
+    <div class="section-label">Layihələrimiz</div>
+    <h2 class="section-title">İdeyadan Reallığa</h2>
+    <p class="section-sub">Müştərilərimiz üçün həyata keçirdiyimiz bəzi uğurlu layihələr.</p>
+  </div>
+  <div id="projects-grid">
+    <!-- Firebase-dən avtomatik yüklənir -->
+    <div style="grid-column:1/-1; text-align:center; padding:60px; color:var(--muted);">
+      <i class="fas fa-circle-notch fa-spin" style="font-size:2rem; margin-bottom:16px; display:block;"></i>
+      Layihələr yüklənir...
+    </div>
+  </div>
+</section>
+
+<!-- WHY US -->
+<section id="why">
+  <div class="reveal">
+    <div class="section-label">Niyə Bizi Seçməlisiniz</div>
+    <h2 class="section-title">Fərqimiz nədədir?</h2>
+    <p class="section-sub">Biz sadəcə kod yazmırıq — sizin biznes hədəflərinizə çatmağınıza kömək edirik.</p>
+  </div>
+  <div class="why-grid">
+    <div class="why-item reveal">
+      <div class="why-num">01</div>
+      <div class="why-text">
+        <h4>Yenilikçilik</h4>
+        <p>Hər layihəmizdə ən müasir texnologiyaları istifadə edir, müştərilərimizə yenilikçi həllər təqdim edirik.</p>
+      </div>
+    </div>
+    <div class="why-item reveal">
+      <div class="why-num">02</div>
+      <div class="why-text">
+        <h4>Peşəkar Komanda</h4>
+        <p>İxtisaslı mütəxəssislərdən ibarət komandamız hər layihədə yüksək keyfiyyətli nəticələr əldə edir.</p>
+      </div>
+    </div>
+    <div class="why-item reveal">
+      <div class="why-num">03</div>
+      <div class="why-text">
+        <h4>Müştəri Məmnuniyyəti</h4>
+        <p>Hər müştərinin unikal ehtiyaclarına uyğun fərdi yanaşma ilə 100% məmnuniyyət təmin edirik.</p>
+      </div>
+    </div>
+    <div class="why-item reveal">
+      <div class="why-num">04</div>
+      <div class="why-text">
+        <h4>Vaxtında Çatdırılma</h4>
+        <p>Razılaşdırılmış müddət ərzində layihəni tamamlayır, müştərilərimizin vaxtına hörmət edirik.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLIENTS -->
+<section id="clients">
+  <p class="clients-title">Tərəfdaşlarımız</p>
+  <div class="clients-row reveal">
+    <div class="client-logo">NurluKargo</div>
+    <div class="client-logo">Maxmedia Agency</div>
+    <div class="client-logo">Grand Ani Hotel</div>
+    <div class="client-logo">Uplink</div>
+    <div class="client-logo">RS Prime</div>
+    <div class="client-logo">Brand 100</div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="section-label">Bizimlə Əlaqə</div>
+  <h2 class="section-title reveal">Layihənizi başlatmağa<br>hazırsınız?</h2>
+  <p class="section-sub reveal">Pulsuz məsləhət üçün WhatsApp vasitəsilə bizimlə əlaqə saxlayın. İdeyadan reallığa — birlikdə.</p>
+  <div class="hero-btns">
+    <a href="https://wa.me/qr/7WGJXQHSUIMDE1" target="_blank" class="btn-primary">
+      <i class="fab fa-whatsapp"></i> WhatsApp ilə Yazın
+    </a>
+    <a href="https://www.tiktok.com/@sayt_yigilmasi_baku1?_r=1&_t=ZS-96hEgaNFmUM" target="_blank" class="btn-secondary">
+      <i class="fab fa-tiktok"></i> TikTok-da İzlə
+    </a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-top">
+    <div class="footer-brand">
+      <a href="#hero" class="logo">Sayt Yığılması</a>
+      <p>Biznesinizi rəqəmsal dünyaya daşıyırıq. Baku, Azərbaycan.</p>
+      <div class="social-row">
+        <a href="https://www.tiktok.com/@sayt_yigilmasi_baku1?_r=1&_t=ZS-96hEgaNFmUM" target="_blank" class="social-btn"><i class="fab fa-tiktok"></i></a>
+        <a href="https://wa.me/qr/7WGJXQHSUIMDE1" target="_blank" class="social-btn"><i class="fab fa-whatsapp"></i></a>
+      </div>
+    </div>
+    <div class="footer-links">
+      <h4>Keçidlər</h4>
+      <ul>
+        <li><a href="#services">Xidmətlər</a></li>
+        <li><a href="#projects">Layihələr</a></li>
+        <li><a href="#why">Niyə Biz</a></li>
+        <li><a href="#clients">Müştərilər</a></li>
+      </ul>
+    </div>
+    <div class="footer-links">
+      <h4>Əlaqə</h4>
+      <ul>
+        <li><a href="https://wa.me/qr/7WGJXQHSUIMDE1" target="_blank">WhatsApp</a></li>
+        <li><a href="https://www.tiktok.com/@sayt_yigilmasi_baku1" target="_blank">TikTok</a></li>
+        <li><a href="admin.html">Admin Panel</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2025 Sayt Yığılması. Bütün hüquqlar qorunur.</p>
+    <a href="admin.html">Admin</a>
+  </div>
+</footer>
+
+<script>
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Mobile menu
+function openMobileMenu() { document.getElementById('mobileMenu').classList.add('open'); }
+function closeMobileMenu() { document.getElementById('mobileMenu').classList.remove('open'); }
+
+// Smooth nav shrink on scroll
+window.addEventListener('scroll', () => {
+  const nav = document.querySelector('nav');
+  nav.style.padding = window.scrollY > 60 ? '12px 6%' : '18px 6%';
+});
+</script>
+</body>
+</html>
